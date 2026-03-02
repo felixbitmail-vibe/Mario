@@ -11,6 +11,41 @@ const DEFAULT_LEVEL_TIME = 300;
 const FLAG_POLE_X_1_1 = 3168;
 const POINTS_PER_TIME_TICK = 50;
 
+const keyState = { left: false, right: false, up: false, down: false, shift: false };
+
+let windowKeyCleanup: (() => void) | null = null;
+
+function initWindowKeys(): void {
+    if (windowKeyCleanup) return;
+    const keydown = (e: KeyboardEvent) => {
+        switch (e.code) {
+            case 'ArrowLeft': keyState.left = true; e.preventDefault(); break;
+            case 'ArrowRight': keyState.right = true; e.preventDefault(); break;
+            case 'ArrowUp': keyState.up = true; e.preventDefault(); break;
+            case 'ArrowDown': keyState.down = true; e.preventDefault(); break;
+            case 'ShiftLeft':
+            case 'ShiftRight': keyState.shift = true; e.preventDefault(); break;
+        }
+    };
+    const keyup = (e: KeyboardEvent) => {
+        switch (e.code) {
+            case 'ArrowLeft': keyState.left = false; break;
+            case 'ArrowRight': keyState.right = false; break;
+            case 'ArrowUp': keyState.up = false; break;
+            case 'ArrowDown': keyState.down = false; break;
+            case 'ShiftLeft':
+            case 'ShiftRight': keyState.shift = false; break;
+        }
+    };
+    window.addEventListener('keydown', keydown);
+    window.addEventListener('keyup', keyup);
+    windowKeyCleanup = () => {
+        window.removeEventListener('keydown', keydown);
+        window.removeEventListener('keyup', keyup);
+        windowKeyCleanup = null;
+    };
+}
+
 interface PipeZone {
     x: number;
     y: number;
@@ -24,7 +59,6 @@ interface PipeZone {
 export default class MainScene extends Phaser.Scene {
     private mario!: Mario;
     private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
-    private bButton!: Phaser.Input.Keyboard.Key;
     private groundGroup!: Phaser.Physics.Arcade.StaticGroup;
     private blocksGroup!: Phaser.Physics.Arcade.StaticGroup;
     private pipeZones: PipeZone[] = [];
@@ -149,13 +183,19 @@ export default class MainScene extends Phaser.Scene {
         this.cameras.main.setBounds(0, 0, worldWidth, WORLD_HEIGHT);
         this.cameras.main.setScroll(0, 0);
 
+        keyState.left = false;
+        keyState.right = false;
+        keyState.up = false;
+        keyState.down = false;
+        keyState.shift = false;
+        initWindowKeys();
+
         const canvas = this.sys.game.canvas;
         canvas.setAttribute('tabindex', '1');
         canvas.focus();
         this.input.on('pointerdown', () => canvas.focus());
 
         this.cursors = this.input.keyboard!.createCursorKeys();
-        this.bButton = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
 
         AudioManager.init(this);
         AudioManager.playMusic('overworld');
@@ -404,7 +444,8 @@ export default class MainScene extends Phaser.Scene {
         if (this.enteringPipe) return;
 
         const body = this.mario.body as Phaser.Physics.Arcade.Body | null;
-        if (body?.blocked.down && this.cursors.down.isDown) {
+        const downPressed = keyState.down || this.cursors.down.isDown;
+        if (body?.blocked.down && downPressed) {
             const zone = this.getPipeZoneAtMario();
             if (zone) {
                 this.startPipeDescent(zone);
@@ -431,8 +472,15 @@ export default class MainScene extends Phaser.Scene {
                 space: { isDown: false },
                 shift: { isDown: !!inputRun },
             } as Phaser.Types.Input.Keyboard.CursorKeys)
-            : this.cursors;
-        const runKey = useMobileInput ? { isDown: !!inputRun } : this.bButton;
+            : ({
+                left: { isDown: keyState.left },
+                right: { isDown: keyState.right },
+                up: { isDown: keyState.up },
+                down: { isDown: keyState.down },
+                space: { isDown: false },
+                shift: { isDown: keyState.shift },
+            } as Phaser.Types.Input.Keyboard.CursorKeys);
+        const runKey = useMobileInput ? { isDown: !!inputRun } : { isDown: keyState.shift } as Phaser.Input.Keyboard.Key;
 
         this.mario.update(cursors, runKey as Phaser.Input.Keyboard.Key, this.isUnderwater);
         const cam = this.cameras.main;
