@@ -10,9 +10,14 @@ const DEPTH_GRAPHICS = 2000;
 const DEPTH_LABEL = 2001;
 
 function isMobileLike(game: Phaser.Game): boolean {
+    try {
+        if (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0) return true;
+        if (typeof window !== 'undefined' && 'ontouchstart' in window) return true;
+    } catch (_) {}
     const touch = game.device.input.touch;
-    const w = game.scale.width;
-    return touch || w <= 600;
+    const gameW = game.scale.width;
+    const displayW = (game.scale as Phaser.Scale.ScaleManager & { displaySize?: { width: number } }).displaySize?.width ?? gameW;
+    return touch || gameW <= 600 || displayW <= 700;
 }
 
 export default class MobileOverlayScene extends Phaser.Scene {
@@ -112,7 +117,10 @@ export default class MobileOverlayScene extends Phaser.Scene {
         this.bBtn.on('pointerup', setReg('inputRun', false));
         this.bBtn.on('pointerout', setReg('inputRun', false));
 
-        if (!isMobileLike(this.sys.game)) {
+        if (isMobileLike(this.sys.game)) {
+            this.scene.setVisible(true);
+            this.scene.bringToTop();
+        } else {
             this.scene.setVisible(false);
             this.leftBtn.disableInteractive();
             this.rightBtn.disableInteractive();

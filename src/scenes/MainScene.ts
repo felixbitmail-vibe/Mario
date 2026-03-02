@@ -290,17 +290,20 @@ export default class MainScene extends Phaser.Scene {
 
         const w = this.cameras.main.width;
         const h = this.cameras.main.height;
-        const bg = this.add.rectangle(w / 2, h / 2, w + 100, h + 100, 0x000000, 0.4).setScrollFactor(0).setDepth(5000).setInteractive();
-        const txt = this.add.text(w / 2, h / 2, 'Klik her eller tryk en tast\n← → A D bevæg   ↑ Space W hop   SHIFT løb', {
-            fontSize: '14px',
-            color: '#fff',
-            align: 'center',
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(5001);
-        this.keyHintOverlay = this.add.container(0, 0, [bg, txt]);
-        bg.on('pointerdown', () => {
-            focusKeyInput();
-            this.removeKeyHintOnce();
-        });
+        const isMobile = this.sys.game.device.input.touch || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0);
+        if (!isMobile) {
+            const bg = this.add.rectangle(w / 2, h / 2, w + 100, h + 100, 0x000000, 0.4).setScrollFactor(0).setDepth(5000).setInteractive();
+            const txt = this.add.text(w / 2, h / 2, 'Klik her eller tryk en tast\n← → A D bevæg   ↑ Space W hop   SHIFT løb', {
+                fontSize: '14px',
+                color: '#fff',
+                align: 'center',
+            }).setOrigin(0.5).setScrollFactor(0).setDepth(5001);
+            this.keyHintOverlay = this.add.container(0, 0, [bg, txt]);
+            bg.on('pointerdown', () => {
+                focusKeyInput();
+                this.removeKeyHintOnce();
+            });
+        }
 
         this.cursors = this.input.keyboard!.createCursorKeys();
         this.runKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
