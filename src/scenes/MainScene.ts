@@ -13,42 +13,48 @@ const POINTS_PER_TIME_TICK = 50;
 
 const keyState = { left: false, right: false, up: false, down: false, shift: false };
 
-let windowKeyCleanup: (() => void) | null = null;
+let keyInputEl: HTMLInputElement | null = null;
 
-function initWindowKeys(): void {
-    if (windowKeyCleanup) return;
-    const keydown = (e: KeyboardEvent) => {
-        switch (e.code) {
-            case 'ArrowLeft': keyState.left = true; e.preventDefault(); break;
-            case 'ArrowRight': keyState.right = true; e.preventDefault(); break;
-            case 'ArrowUp': keyState.up = true; e.preventDefault(); break;
-            case 'ArrowDown': keyState.down = true; e.preventDefault(); break;
-            case 'ShiftLeft':
-            case 'ShiftRight': keyState.shift = true; e.preventDefault(); break;
-        }
-    };
-    const keyup = (e: KeyboardEvent) => {
-        switch (e.code) {
-            case 'ArrowLeft': keyState.left = false; break;
-            case 'ArrowRight': keyState.right = false; break;
-            case 'ArrowUp': keyState.up = false; break;
-            case 'ArrowDown': keyState.down = false; break;
-            case 'ShiftLeft':
-            case 'ShiftRight': keyState.shift = false; break;
-        }
-    };
-    const opts = { capture: true };
-    document.addEventListener('keydown', keydown, opts);
-    document.addEventListener('keyup', keyup, opts);
-    window.addEventListener('keydown', keydown);
-    window.addEventListener('keyup', keyup);
-    windowKeyCleanup = () => {
-        document.removeEventListener('keydown', keydown, opts);
-        document.removeEventListener('keyup', keyup, opts);
-        window.removeEventListener('keydown', keydown);
-        window.removeEventListener('keyup', keyup);
-        windowKeyCleanup = null;
-    };
+function onKeyDown(e: KeyboardEvent): void {
+    switch (e.code) {
+        case 'ArrowLeft': keyState.left = true; e.preventDefault(); break;
+        case 'ArrowRight': keyState.right = true; e.preventDefault(); break;
+        case 'ArrowUp': keyState.up = true; e.preventDefault(); break;
+        case 'ArrowDown': keyState.down = true; e.preventDefault(); break;
+        case 'ShiftLeft':
+        case 'ShiftRight': keyState.shift = true; e.preventDefault(); break;
+    }
+}
+
+function onKeyUp(e: KeyboardEvent): void {
+    switch (e.code) {
+        case 'ArrowLeft': keyState.left = false; break;
+        case 'ArrowRight': keyState.right = false; break;
+        case 'ArrowUp': keyState.up = false; break;
+        case 'ArrowDown': keyState.down = false; break;
+        case 'ShiftLeft':
+        case 'ShiftRight': keyState.shift = false; break;
+    }
+}
+
+function ensureKeyInput(): HTMLInputElement {
+    if (keyInputEl) return keyInputEl;
+    const el = document.createElement('input');
+    el.type = 'text';
+    el.autocomplete = 'off';
+    el.setAttribute('aria-hidden', 'true');
+    el.tabIndex = 0;
+    el.style.cssText = 'position:fixed;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;';
+    el.addEventListener('keydown', onKeyDown);
+    el.addEventListener('keyup', onKeyUp);
+    document.body.appendChild(el);
+    keyInputEl = el;
+    return el;
+}
+
+function focusKeyInput(): void {
+    const el = ensureKeyInput();
+    el.focus();
 }
 
 interface PipeZone {
@@ -80,6 +86,7 @@ export default class MainScene extends Phaser.Scene {
     private bridgeAxeTriggered = false;
     private axeZone: Phaser.GameObjects.Rectangle | null = null;
     private flagPoleZone: Phaser.GameObjects.Rectangle | null = null;
+    private keyHintOverlay: Phaser.GameObjects.Container | null = null;
 
     constructor() {
         super({ key: 'MainScene' });
@@ -195,14 +202,28 @@ export default class MainScene extends Phaser.Scene {
         keyState.up = false;
         keyState.down = false;
         keyState.shift = false;
-        initWindowKeys();
 
-        const canvas = this.sys.game.canvas as HTMLCanvasElement;
-        canvas.setAttribute('tabindex', '1');
-        canvas.focus();
-        this.time.delayedCall(100, () => canvas.focus());
-        this.time.delayedCall(500, () => canvas.focus());
-        this.input.on('pointerdown', () => canvas.focus());
+        focusKeyInput();
+        this.time.delayedCall(150, () => focusKeyInput());
+        this.time.delayedCall(600, () => focusKeyInput());
+        this.input.on('pointerdown', () => {
+            focusKeyInput();
+            this.removeKeyHintOnce();
+        });
+
+        const w = this.cameras.main.width;
+        const h = this.cameras.main.height;
+        const bg = this.add.rectangle(w / 2, h / 2, w + 100, h + 100, 0x000000, 0.4).setScrollFactor(0).setDepth(5000).setInteractive();
+        const txt = this.add.text(w / 2, h / 2, 'Klik her for at aktivere tastatur\n← → bevæg   ↑ hop   SHIFT løb', {
+            fontSize: '14px',
+            color: '#fff',
+            align: 'center',
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(5001);
+        this.keyHintOverlay = this.add.container(0, 0, [bg, txt]);
+        bg.on('pointerdown', () => {
+            focusKeyInput();
+            this.removeKeyHintOnce();
+        });
 
         this.cursors = this.input.keyboard!.createCursorKeys();
         this.runKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
@@ -212,6 +233,13 @@ export default class MainScene extends Phaser.Scene {
 
         this.scene.launch('HudScene');
         this.scene.launch('MobileOverlayScene');
+    }
+
+    private removeKeyHintOnce(): void {
+        if (this.keyHintOverlay) {
+            this.keyHintOverlay.destroy();
+            this.keyHintOverlay = null;
+        }
     }
 
     private buildMethMethMethodLevel(_levelData: Record<string, unknown>): void {

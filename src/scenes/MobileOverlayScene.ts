@@ -1,8 +1,12 @@
 import Phaser from 'phaser';
 
-const BTN_SIZE = 56;
-const BTN_ALPHA = 0.35;
-const GAP = 24;
+const GAP = 20;
+const DPAD_BTN_W = 52;
+const DPAD_BTN_H = 52;
+const ACTION_RADIUS = 36;
+const DEPTH_ZONE = 1999;
+const DEPTH_GRAPHICS = 2000;
+const DEPTH_LABEL = 2001;
 
 export default class MobileOverlayScene extends Phaser.Scene {
     private leftBtn!: Phaser.GameObjects.Zone;
@@ -23,29 +27,61 @@ export default class MobileOverlayScene extends Phaser.Scene {
         const h = this.scale.height;
         const w = this.scale.width;
 
-        const leftX = GAP + BTN_SIZE / 2;
-        const rightX = GAP + BTN_SIZE * 1.5 + 16;
-        const moveY = h - GAP - BTN_SIZE / 2;
+        const fontSize = Math.max(12, Math.min(14, w / 36));
+        const moveY = h - GAP - DPAD_BTN_H / 2 - 8;
+        const actionY = h - GAP - ACTION_RADIUS - 8;
 
-        const aX = w - GAP - BTN_SIZE * 1.5 - 16;
-        const bX = w - GAP - BTN_SIZE / 2;
-        const actionY = h - GAP - BTN_SIZE / 2;
+        const leftX = GAP + DPAD_BTN_W / 2 + 4;
+        const rightX = GAP + DPAD_BTN_W * 1.5 + 12;
+        const aX = w - GAP - ACTION_RADIUS * 2 - 12;
+        const bX = w - GAP - ACTION_RADIUS;
 
-        const makeBtn = (x: number, y: number, label: string) => {
-            const bg = this.add.rectangle(x, y, BTN_SIZE, BTN_SIZE, 0xffffff, BTN_ALPHA).setInteractive({ useHandCursor: true }).setScrollFactor(0).setDepth(2000);
-            const text = this.add.text(x, y, label, { fontSize: '18px', color: '#000' }).setOrigin(0.5).setScrollFactor(0).setDepth(2001);
-            const zone = this.add.zone(x, y, BTN_SIZE, BTN_SIZE).setInteractive({ useHandCursor: true }).setScrollFactor(0).setDepth(1999);
-            return { zone, bg, text };
-        };
+        this.add.text(w / 2, h - GAP - DPAD_BTN_H - 28, 'Kontroller', {
+            fontSize: `${fontSize}px`,
+            color: '#fff',
+            fontStyle: 'bold',
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(DEPTH_LABEL);
 
-        const left = makeBtn(leftX, moveY, '◀');
-        this.leftBtn = left.zone;
-        const right = makeBtn(rightX, moveY, '▶');
-        this.rightBtn = right.zone;
-        const a = makeBtn(aX, actionY, 'A');
-        this.aBtn = a.zone;
-        const b = makeBtn(bX, actionY, 'B');
-        this.bBtn = b.zone;
+        const g = this.add.graphics().setScrollFactor(0).setDepth(DEPTH_GRAPHICS);
+
+        g.fillStyle(0x333333, 0.9);
+        g.lineStyle(3, 0x555555, 1);
+        g.fillRoundedRect(leftX - DPAD_BTN_W / 2, moveY - DPAD_BTN_H / 2, DPAD_BTN_W, DPAD_BTN_H, 10);
+        g.strokeRoundedRect(leftX - DPAD_BTN_W / 2, moveY - DPAD_BTN_H / 2, DPAD_BTN_W, DPAD_BTN_H, 10);
+        g.fillStyle(0x444444, 0.95);
+        g.fillRoundedRect(leftX - DPAD_BTN_W / 2 + 2, moveY - DPAD_BTN_H / 2 + 2, DPAD_BTN_W - 4, DPAD_BTN_H - 4, 8);
+        this.add.text(leftX, moveY, '◀', { fontSize: '22px', color: '#fff' }).setOrigin(0.5).setScrollFactor(0).setDepth(DEPTH_LABEL);
+
+        g.fillStyle(0x333333, 0.9);
+        g.lineStyle(3, 0x555555, 1);
+        g.fillRoundedRect(rightX - DPAD_BTN_W / 2, moveY - DPAD_BTN_H / 2, DPAD_BTN_W, DPAD_BTN_H, 10);
+        g.strokeRoundedRect(rightX - DPAD_BTN_W / 2, moveY - DPAD_BTN_H / 2, DPAD_BTN_W, DPAD_BTN_H, 10);
+        g.fillStyle(0x444444, 0.95);
+        g.fillRoundedRect(rightX - DPAD_BTN_W / 2 + 2, moveY - DPAD_BTN_H / 2 + 2, DPAD_BTN_W - 4, DPAD_BTN_H - 4, 8);
+        this.add.text(rightX, moveY, '▶', { fontSize: '22px', color: '#fff' }).setOrigin(0.5).setScrollFactor(0).setDepth(DEPTH_LABEL);
+
+        g.fillStyle(0x2d5016, 0.95);
+        g.lineStyle(3, 0x4a7c23, 1);
+        g.fillCircle(aX, actionY, ACTION_RADIUS - 2);
+        g.strokeCircle(aX, actionY, ACTION_RADIUS - 2);
+        g.fillStyle(0x3d6b1a, 0.9);
+        g.fillCircle(aX - 2, actionY - 2, ACTION_RADIUS - 8);
+        this.add.text(aX, actionY, 'A', { fontSize: '20px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5).setScrollFactor(0).setDepth(DEPTH_LABEL);
+        this.add.text(aX, actionY + ACTION_RADIUS + 10, 'Hop', { fontSize: `${fontSize - 2}px`, color: '#b8d4a0' }).setOrigin(0.5).setScrollFactor(0).setDepth(DEPTH_LABEL);
+
+        g.fillStyle(0x8b4513, 0.95);
+        g.lineStyle(3, 0xa0522d, 1);
+        g.fillCircle(bX, actionY, ACTION_RADIUS - 2);
+        g.strokeCircle(bX, actionY, ACTION_RADIUS - 2);
+        g.fillStyle(0x9b5523, 0.9);
+        g.fillCircle(bX - 2, actionY - 2, ACTION_RADIUS - 8);
+        this.add.text(bX, actionY, 'B', { fontSize: '20px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5).setScrollFactor(0).setDepth(DEPTH_LABEL);
+        this.add.text(bX, actionY + ACTION_RADIUS + 10, 'Løb', { fontSize: `${fontSize - 2}px`, color: '#e8c4a0' }).setOrigin(0.5).setScrollFactor(0).setDepth(DEPTH_LABEL);
+
+        this.leftBtn = this.add.zone(leftX, moveY, DPAD_BTN_W, DPAD_BTN_H).setInteractive({ useHandCursor: false }).setScrollFactor(0).setDepth(DEPTH_ZONE);
+        this.rightBtn = this.add.zone(rightX, moveY, DPAD_BTN_W, DPAD_BTN_H).setInteractive({ useHandCursor: false }).setScrollFactor(0).setDepth(DEPTH_ZONE);
+        this.aBtn = this.add.zone(aX, actionY, ACTION_RADIUS * 2, ACTION_RADIUS * 2).setInteractive({ useHandCursor: false }).setScrollFactor(0).setDepth(DEPTH_ZONE);
+        this.bBtn = this.add.zone(bX, actionY, ACTION_RADIUS * 2, ACTION_RADIUS * 2).setInteractive({ useHandCursor: false }).setScrollFactor(0).setDepth(DEPTH_ZONE);
 
         const setReg = (key: string, value: boolean) => () => this.registry.set(key, value);
 
