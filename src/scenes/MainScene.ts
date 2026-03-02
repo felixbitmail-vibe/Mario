@@ -15,7 +15,6 @@ export default class MainScene extends Phaser.Scene {
     }
 
     preload(): void {
-        const config = LevelManager.getInstance().getConfig();
         this.load.json('1-1', '/assets/maps/1-1.json');
         this.load.spritesheet('mario', '/assets/sprites/mario.png', {
             frameWidth: 16,
@@ -30,7 +29,7 @@ export default class MainScene extends Phaser.Scene {
         const levelConfig = LevelManager.getInstance().getConfig();
         this.cameras.main.setBackgroundColor(levelConfig.bgColor || '#5C94FC');
 
-        const levelData = this.cache.json.get('1-1') as { layers?: Array<{ tiles?: Array<{ ranges: number[][] }> }> };
+        this.cache.json.get('1-1');
         const worldWidth = 3400;
         const worldHeight = 240;
         this.physics.world.setBounds(0, 0, worldWidth, worldHeight);
