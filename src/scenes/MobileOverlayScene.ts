@@ -1,12 +1,19 @@
 import Phaser from 'phaser';
 
-const GAP = 20;
-const DPAD_BTN_W = 52;
-const DPAD_BTN_H = 52;
-const ACTION_RADIUS = 36;
+const GAP = 16;
+const DPAD_BTN_W = 58;
+const DPAD_BTN_H = 58;
+const ACTION_RADIUS = 42;
+const HIT_PADDING = 8;
 const DEPTH_ZONE = 1999;
 const DEPTH_GRAPHICS = 2000;
 const DEPTH_LABEL = 2001;
+
+function isMobileLike(game: Phaser.Game): boolean {
+    const touch = game.device.input.touch;
+    const w = game.scale.width;
+    return touch || w <= 600;
+}
 
 export default class MobileOverlayScene extends Phaser.Scene {
     private leftBtn!: Phaser.GameObjects.Zone;
@@ -27,16 +34,16 @@ export default class MobileOverlayScene extends Phaser.Scene {
         const h = this.scale.height;
         const w = this.scale.width;
 
-        const fontSize = Math.max(12, Math.min(14, w / 36));
-        const moveY = h - GAP - DPAD_BTN_H / 2 - 8;
-        const actionY = h - GAP - ACTION_RADIUS - 8;
+        const fontSize = Math.max(13, Math.min(16, w / 32));
+        const moveY = h - GAP - DPAD_BTN_H / 2 - 6;
+        const actionY = h - GAP - ACTION_RADIUS - 6;
 
-        const leftX = GAP + DPAD_BTN_W / 2 + 4;
-        const rightX = GAP + DPAD_BTN_W * 1.5 + 12;
-        const aX = w - GAP - ACTION_RADIUS * 2 - 12;
+        const leftX = GAP + DPAD_BTN_W / 2 + 6;
+        const rightX = GAP + DPAD_BTN_W * 1.5 + 16;
+        const aX = w - GAP - ACTION_RADIUS * 2 - 16;
         const bX = w - GAP - ACTION_RADIUS;
 
-        this.add.text(w / 2, h - GAP - DPAD_BTN_H - 28, 'Kontroller', {
+        this.add.text(w / 2, h - GAP - DPAD_BTN_H - 24, 'Styring', {
             fontSize: `${fontSize}px`,
             color: '#fff',
             fontStyle: 'bold',
@@ -44,44 +51,48 @@ export default class MobileOverlayScene extends Phaser.Scene {
 
         const g = this.add.graphics().setScrollFactor(0).setDepth(DEPTH_GRAPHICS);
 
-        g.fillStyle(0x333333, 0.9);
+        g.fillStyle(0x333333, 0.92);
         g.lineStyle(3, 0x555555, 1);
-        g.fillRoundedRect(leftX - DPAD_BTN_W / 2, moveY - DPAD_BTN_H / 2, DPAD_BTN_W, DPAD_BTN_H, 10);
-        g.strokeRoundedRect(leftX - DPAD_BTN_W / 2, moveY - DPAD_BTN_H / 2, DPAD_BTN_W, DPAD_BTN_H, 10);
-        g.fillStyle(0x444444, 0.95);
-        g.fillRoundedRect(leftX - DPAD_BTN_W / 2 + 2, moveY - DPAD_BTN_H / 2 + 2, DPAD_BTN_W - 4, DPAD_BTN_H - 4, 8);
-        this.add.text(leftX, moveY, '◀', { fontSize: '22px', color: '#fff' }).setOrigin(0.5).setScrollFactor(0).setDepth(DEPTH_LABEL);
+        g.fillRoundedRect(leftX - DPAD_BTN_W / 2, moveY - DPAD_BTN_H / 2, DPAD_BTN_W, DPAD_BTN_H, 12);
+        g.strokeRoundedRect(leftX - DPAD_BTN_W / 2, moveY - DPAD_BTN_H / 2, DPAD_BTN_W, DPAD_BTN_H, 12);
+        g.fillStyle(0x444444, 0.98);
+        g.fillRoundedRect(leftX - DPAD_BTN_W / 2 + 3, moveY - DPAD_BTN_H / 2 + 3, DPAD_BTN_W - 6, DPAD_BTN_H - 6, 10);
+        this.add.text(leftX, moveY, '◀', { fontSize: '26px', color: '#fff' }).setOrigin(0.5).setScrollFactor(0).setDepth(DEPTH_LABEL);
 
-        g.fillStyle(0x333333, 0.9);
+        g.fillStyle(0x333333, 0.92);
         g.lineStyle(3, 0x555555, 1);
-        g.fillRoundedRect(rightX - DPAD_BTN_W / 2, moveY - DPAD_BTN_H / 2, DPAD_BTN_W, DPAD_BTN_H, 10);
-        g.strokeRoundedRect(rightX - DPAD_BTN_W / 2, moveY - DPAD_BTN_H / 2, DPAD_BTN_W, DPAD_BTN_H, 10);
-        g.fillStyle(0x444444, 0.95);
-        g.fillRoundedRect(rightX - DPAD_BTN_W / 2 + 2, moveY - DPAD_BTN_H / 2 + 2, DPAD_BTN_W - 4, DPAD_BTN_H - 4, 8);
-        this.add.text(rightX, moveY, '▶', { fontSize: '22px', color: '#fff' }).setOrigin(0.5).setScrollFactor(0).setDepth(DEPTH_LABEL);
+        g.fillRoundedRect(rightX - DPAD_BTN_W / 2, moveY - DPAD_BTN_H / 2, DPAD_BTN_W, DPAD_BTN_H, 12);
+        g.strokeRoundedRect(rightX - DPAD_BTN_W / 2, moveY - DPAD_BTN_H / 2, DPAD_BTN_W, DPAD_BTN_H, 12);
+        g.fillStyle(0x444444, 0.98);
+        g.fillRoundedRect(rightX - DPAD_BTN_W / 2 + 3, moveY - DPAD_BTN_H / 2 + 3, DPAD_BTN_W - 6, DPAD_BTN_H - 6, 10);
+        this.add.text(rightX, moveY, '▶', { fontSize: '26px', color: '#fff' }).setOrigin(0.5).setScrollFactor(0).setDepth(DEPTH_LABEL);
 
-        g.fillStyle(0x2d5016, 0.95);
+        g.fillStyle(0x2d5016, 0.98);
         g.lineStyle(3, 0x4a7c23, 1);
         g.fillCircle(aX, actionY, ACTION_RADIUS - 2);
         g.strokeCircle(aX, actionY, ACTION_RADIUS - 2);
-        g.fillStyle(0x3d6b1a, 0.9);
-        g.fillCircle(aX - 2, actionY - 2, ACTION_RADIUS - 8);
-        this.add.text(aX, actionY, 'A', { fontSize: '20px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5).setScrollFactor(0).setDepth(DEPTH_LABEL);
-        this.add.text(aX, actionY + ACTION_RADIUS + 10, 'Hop', { fontSize: `${fontSize - 2}px`, color: '#b8d4a0' }).setOrigin(0.5).setScrollFactor(0).setDepth(DEPTH_LABEL);
+        g.fillStyle(0x3d6b1a, 0.95);
+        g.fillCircle(aX - 2, actionY - 2, ACTION_RADIUS - 10);
+        this.add.text(aX, actionY, 'A', { fontSize: '22px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5).setScrollFactor(0).setDepth(DEPTH_LABEL);
+        this.add.text(aX, actionY + ACTION_RADIUS + 12, 'Hop', { fontSize: `${fontSize - 1}px`, color: '#b8d4a0' }).setOrigin(0.5).setScrollFactor(0).setDepth(DEPTH_LABEL);
 
-        g.fillStyle(0x8b4513, 0.95);
+        g.fillStyle(0x8b4513, 0.98);
         g.lineStyle(3, 0xa0522d, 1);
         g.fillCircle(bX, actionY, ACTION_RADIUS - 2);
         g.strokeCircle(bX, actionY, ACTION_RADIUS - 2);
-        g.fillStyle(0x9b5523, 0.9);
-        g.fillCircle(bX - 2, actionY - 2, ACTION_RADIUS - 8);
-        this.add.text(bX, actionY, 'B', { fontSize: '20px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5).setScrollFactor(0).setDepth(DEPTH_LABEL);
-        this.add.text(bX, actionY + ACTION_RADIUS + 10, 'Løb', { fontSize: `${fontSize - 2}px`, color: '#e8c4a0' }).setOrigin(0.5).setScrollFactor(0).setDepth(DEPTH_LABEL);
+        g.fillStyle(0x9b5523, 0.95);
+        g.fillCircle(bX - 2, actionY - 2, ACTION_RADIUS - 10);
+        this.add.text(bX, actionY, 'B', { fontSize: '22px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5).setScrollFactor(0).setDepth(DEPTH_LABEL);
+        this.add.text(bX, actionY + ACTION_RADIUS + 12, 'Løb', { fontSize: `${fontSize - 1}px`, color: '#e8c4a0' }).setOrigin(0.5).setScrollFactor(0).setDepth(DEPTH_LABEL);
 
-        this.leftBtn = this.add.zone(leftX, moveY, DPAD_BTN_W, DPAD_BTN_H).setInteractive({ useHandCursor: false }).setScrollFactor(0).setDepth(DEPTH_ZONE);
-        this.rightBtn = this.add.zone(rightX, moveY, DPAD_BTN_W, DPAD_BTN_H).setInteractive({ useHandCursor: false }).setScrollFactor(0).setDepth(DEPTH_ZONE);
-        this.aBtn = this.add.zone(aX, actionY, ACTION_RADIUS * 2, ACTION_RADIUS * 2).setInteractive({ useHandCursor: false }).setScrollFactor(0).setDepth(DEPTH_ZONE);
-        this.bBtn = this.add.zone(bX, actionY, ACTION_RADIUS * 2, ACTION_RADIUS * 2).setInteractive({ useHandCursor: false }).setScrollFactor(0).setDepth(DEPTH_ZONE);
+        const hitW = DPAD_BTN_W + HIT_PADDING * 2;
+        const hitH = DPAD_BTN_H + HIT_PADDING * 2;
+        const actionHit = (ACTION_RADIUS * 2) + HIT_PADDING * 2;
+
+        this.leftBtn = this.add.zone(leftX, moveY, hitW, hitH).setInteractive({ useHandCursor: false }).setScrollFactor(0).setDepth(DEPTH_ZONE);
+        this.rightBtn = this.add.zone(rightX, moveY, hitW, hitH).setInteractive({ useHandCursor: false }).setScrollFactor(0).setDepth(DEPTH_ZONE);
+        this.aBtn = this.add.zone(aX, actionY, actionHit, actionHit).setInteractive({ useHandCursor: false }).setScrollFactor(0).setDepth(DEPTH_ZONE);
+        this.bBtn = this.add.zone(bX, actionY, actionHit, actionHit).setInteractive({ useHandCursor: false }).setScrollFactor(0).setDepth(DEPTH_ZONE);
 
         const setReg = (key: string, value: boolean) => () => this.registry.set(key, value);
 
@@ -101,7 +112,7 @@ export default class MobileOverlayScene extends Phaser.Scene {
         this.bBtn.on('pointerup', setReg('inputRun', false));
         this.bBtn.on('pointerout', setReg('inputRun', false));
 
-        if (!this.sys.game.device.input.touch) {
+        if (!isMobileLike(this.sys.game)) {
             this.scene.setVisible(false);
             this.leftBtn.disableInteractive();
             this.rightBtn.disableInteractive();
