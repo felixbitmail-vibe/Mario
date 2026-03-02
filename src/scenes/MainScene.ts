@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import Mario from '../classes/Mario';
+import Player from '../classes/Player';
 import Bowser from '../classes/Bowser';
 import AudioManager from '../managers/AudioManager';
 import LevelManager from '../managers/LevelManager';
@@ -93,7 +93,8 @@ interface PipeZone {
 }
 
 export default class MainScene extends Phaser.Scene {
-    private mario!: Mario;
+    private player!: Player;
+    private dog!: Phaser.GameObjects.Sprite;
     private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
     private runKey!: Phaser.Input.Keyboard.Key;
     private groundGroup!: Phaser.Physics.Arcade.StaticGroup;
@@ -122,10 +123,6 @@ export default class MainScene extends Phaser.Scene {
         for (const key of levelManager.getLevelKeys()) {
             this.load.json(key, `/assets/maps/${key}.json`);
         }
-        this.load.spritesheet('mario', '/assets/sprites/mario.png', {
-            frameWidth: 16,
-            frameHeight: 16,
-        });
         this.load.image('tiles', '/assets/sprites/tiles.png');
         this.load.audio('overworld', '/assets/audio/overworld.mp3');
         this.load.audio('jump', '/assets/audio/jump.wav');
@@ -161,6 +158,33 @@ export default class MainScene extends Phaser.Scene {
             g.destroy();
         }
 
+        if (!this.textures.exists('boy')) {
+            const g = this.add.graphics();
+            const w = 16, h = 24;
+            g.fillStyle(0x1a1a1a, 1);
+            g.fillEllipse(8, 7, 8, 6);
+            g.fillStyle(0xf0d0a0, 1);
+            g.fillEllipse(8, 10, 6, 7);
+            g.fillStyle(0x356abc, 1);
+            g.fillRect(4, 13, 8, 8);
+            g.fillStyle(0x2a3a4a, 1);
+            g.fillRect(4, 20, 4, 4);
+            g.fillRect(8, 20, 4, 4);
+            g.generateTexture('boy', w, h);
+            g.destroy();
+        }
+        if (!this.textures.exists('dog')) {
+            const g = this.add.graphics();
+            g.fillStyle(0x6b4a14, 1);
+            g.fillEllipse(7, 6, 6, 5);
+            g.fillStyle(0x5a3a0a, 1);
+            g.fillEllipse(7, 3, 4, 4);
+            g.fillStyle(0x4a3010, 0.9);
+            g.fillEllipse(12, 5, 3, 2);
+            g.generateTexture('dog', 14, 12);
+            g.destroy();
+        }
+
         const levelDataWithTime = levelData as { time?: number };
         this.levelTimeRemaining = typeof levelDataWithTime?.time === 'number' ? levelDataWithTime.time : DEFAULT_LEVEL_TIME;
         this.victoryActive = false;
@@ -180,42 +204,44 @@ export default class MainScene extends Phaser.Scene {
         }
 
         const spawnX = this.subLevel !== undefined ? 120 : 100;
-        this.mario = new Mario(this, spawnX, GROUND_Y - 8, this.isUnderwater);
-        this.mario.setDepth(10);
+        this.player = new Player(this, spawnX, GROUND_Y - 8, this.isUnderwater);
+        this.player.setDepth(10);
+
+        this.dog = this.add.sprite(spawnX - 14, GROUND_Y - 6, 'dog').setOrigin(0.5, 1).setDepth(9);
 
         if (!this.anims.exists('idle')) {
             this.anims.create({
                 key: 'idle',
-                frames: this.anims.generateFrameNumbers('mario', { start: 0, end: 0 }),
+                frames: [{ key: 'boy', frame: 0 }],
                 frameRate: 1,
                 repeat: -1,
             });
             this.anims.create({
                 key: 'walk',
-                frames: this.anims.generateFrameNumbers('mario', { start: 0, end: 3 }),
-                frameRate: 10,
+                frames: [{ key: 'boy', frame: 0 }],
+                frameRate: 8,
                 repeat: -1,
             });
             this.anims.create({
                 key: 'swim',
-                frames: this.anims.generateFrameNumbers('mario', { start: 2, end: 5 }),
-                frameRate: 12,
+                frames: [{ key: 'boy', frame: 0 }],
+                frameRate: 8,
                 repeat: -1,
             });
         }
 
-        this.physics.add.collider(this.mario, this.groundGroup);
-        this.physics.add.collider(this.mario, this.blocksGroup);
+        this.physics.add.collider(this.player, this.groundGroup);
+        this.physics.add.collider(this.player, this.blocksGroup);
 
         if (this.bowser) {
-            this.physics.add.collider(this.mario, this.bowser.getFireGroup(), this.marioHitByFire, undefined, this);
-            this.physics.add.collider(this.mario, this.bowser.getHammerGroup(), this.marioHitByHammer, undefined, this);
+            this.physics.add.collider(this.player, this.bowser.getFireGroup(), this.playerHitByFire, undefined, this);
+            this.physics.add.collider(this.player, this.bowser.getHammerGroup(), this.playerHitByHammer, undefined, this);
         }
         if (this.axeZone) {
-            this.physics.add.overlap(this.mario, this.axeZone, () => this.onAxeTouched(), undefined, this);
+            this.physics.add.overlap(this.player, this.axeZone, () => this.onAxeTouched(), undefined, this);
         }
         if (this.flagPoleZone) {
-            this.physics.add.overlap(this.mario, this.flagPoleZone, () => this.startFlagVictory(), undefined, this);
+            this.physics.add.overlap(this.player, this.flagPoleZone, () => this.startFlagVictory(), undefined, this);
         }
 
         const worldWidth = (this.physics.world.bounds as Phaser.Geom.Rectangle).width;
@@ -505,11 +531,11 @@ export default class MainScene extends Phaser.Scene {
         if (this.bowser && !this.bowser.isDead) this.bowser.fallInLava();
     }
 
-    private marioHitByFire(): void {
+    private playerHitByFire(): void {
         this.scene.restart();
     }
 
-    private marioHitByHammer(): void {
+    private playerHitByHammer(): void {
         this.scene.restart();
     }
 
@@ -524,17 +550,18 @@ export default class MainScene extends Phaser.Scene {
         if (this.victoryActive) return;
         this.victoryActive = true;
 
-        const body = this.mario.body as Phaser.Physics.Arcade.Body | null;
+        const body = this.player.body as Phaser.Physics.Arcade.Body | null;
         if (body) {
             body.setVelocity(0, 0);
             body.setAllowGravity(false);
         }
+        this.dog.setVisible(false);
 
-        const flagX = this.flagPoleZone ? this.flagPoleZone.x : this.mario.x;
+        const flagX = this.flagPoleZone ? this.flagPoleZone.x : this.player.x;
         const slideDuration = 600;
 
         this.tweens.add({
-            targets: this.mario,
+            targets: this.player,
             x: flagX - 8,
             y: GROUND_Y - 8,
             duration: slideDuration,
@@ -543,7 +570,7 @@ export default class MainScene extends Phaser.Scene {
                 if (this.cache.audio.exists('level_complete')) AudioManager.playMusicOnce('level_complete');
                 const castleX = flagX + 120;
                 this.tweens.add({
-                    targets: this.mario,
+                    targets: this.player,
                     x: castleX,
                     duration: 1500,
                     ease: 'Linear',
@@ -587,10 +614,10 @@ export default class MainScene extends Phaser.Scene {
         if (this.victoryActive) return;
         if (this.enteringPipe) return;
 
-        const body = this.mario.body as Phaser.Physics.Arcade.Body | null;
+        const body = this.player.body as Phaser.Physics.Arcade.Body | null;
         const downPressed = keyState.down || this.cursors.down.isDown;
         if (body?.blocked.down && downPressed) {
-            const zone = this.getPipeZoneAtMario();
+            const zone = this.getPipeZoneAtPlayer();
             if (zone) {
                 this.startPipeDescent(zone);
                 return;
@@ -625,16 +652,23 @@ export default class MainScene extends Phaser.Scene {
         } as Phaser.Types.Input.Keyboard.CursorKeys;
         const runKey = { isDown: mobileRun || keyState.shift || this.runKey.isDown } as Phaser.Input.Keyboard.Key;
 
-        this.mario.update(cursors, runKey, this.isUnderwater);
+        this.player.update(cursors, runKey, this.isUnderwater);
+
+        if (this.dog.visible) {
+            this.dog.x = this.player.x + (this.player.flipX ? 14 : -14);
+            this.dog.y = GROUND_Y - 6;
+            this.dog.setFlipX(this.player.flipX);
+        }
+
         const cam = this.cameras.main;
-        const marioOffset = 200;
+        const playerOffset = 200;
         const worldWidth = (this.physics.world.bounds as Phaser.Geom.Rectangle).width;
-        cam.scrollX = Math.max(cam.scrollX, Math.min(this.mario.x - marioOffset, worldWidth - cam.width));
+        cam.scrollX = Math.max(cam.scrollX, Math.min(this.player.x - playerOffset, worldWidth - cam.width));
     }
 
-    private getPipeZoneAtMario(): PipeZone | null {
-        const mx = this.mario.x;
-        const my = this.mario.y;
+    private getPipeZoneAtPlayer(): PipeZone | null {
+        const mx = this.player.x;
+        const my = this.player.y;
         for (const zone of this.pipeZones) {
             if (mx >= zone.x && mx <= zone.x + zone.w && my >= zone.y && my <= zone.y + zone.h) {
                 return zone;
@@ -645,14 +679,15 @@ export default class MainScene extends Phaser.Scene {
 
     private startPipeDescent(zone: PipeZone): void {
         this.enteringPipe = true;
-        const body = this.mario.body as Phaser.Physics.Arcade.Body | null;
+        this.dog.setVisible(false);
+        const body = this.player.body as Phaser.Physics.Arcade.Body | null;
         if (body) {
             body.setVelocity(0, 0);
             body.setAllowGravity(false);
         }
         const targetY = zone.y + zone.pipeHeight + 16;
         this.tweens.add({
-            targets: this.mario,
+            targets: this.player,
             y: targetY,
             duration: 800,
             ease: 'Linear',
