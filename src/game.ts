@@ -9,6 +9,7 @@ const config: Phaser.Types.Core.GameConfig = {
     height: 240,
     parent: 'app',
     pixelArt: true,
+    render: { roundPixels: true },
     scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
