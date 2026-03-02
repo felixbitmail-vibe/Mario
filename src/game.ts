@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import TitleScene from './scenes/TitleScene';
 import MainScene from './scenes/MainScene';
 import HudScene from './scenes/HudScene';
 import MobileOverlayScene from './scenes/MobileOverlayScene';
@@ -18,7 +19,7 @@ const config: Phaser.Types.Core.GameConfig = {
         default: 'arcade',
         arcade: { gravity: { x: 0, y: 0 }, debug: false },
     },
-    scene: [MainScene, HudScene, MobileOverlayScene],
+    scene: [TitleScene, MainScene, HudScene, MobileOverlayScene],
 };
 
 export default new Phaser.Game(config);
