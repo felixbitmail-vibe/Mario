@@ -103,7 +103,7 @@ export default class MainScene extends Phaser.Scene {
 
         const levelConfig = levelManager.getConfig();
         this.isUnderwater = levelConfig.type === 'underwater';
-        this.cameras.main.setBackgroundColor(levelConfig.bgColor || '#5C94FC');
+        this.cameras.main.setBackgroundColor(0x1a3d2b);
 
         const levelData = this.cache.json.get(currentLevel) as Record<string, unknown> | undefined;
         if (!levelData) {
@@ -182,6 +182,11 @@ export default class MainScene extends Phaser.Scene {
         const worldWidth = (this.physics.world.bounds as Phaser.Geom.Rectangle).width;
         this.cameras.main.setBounds(0, 0, worldWidth, WORLD_HEIGHT);
         this.cameras.main.setScroll(0, 0);
+
+        if (levelConfig.type === 'overworld' || levelConfig.type === 'sky') {
+            this.buildJungleBackground(worldWidth);
+        }
+        this.buildTexturedGround(worldWidth);
 
         keyState.left = false;
         keyState.right = false;
@@ -314,6 +319,190 @@ export default class MainScene extends Phaser.Scene {
         for (let x = 0; x < worldWidth; x += TILE_SIZE) {
             const ground = this.add.rectangle(x + TILE_SIZE / 2, groundY + TILE_SIZE / 2, TILE_SIZE, TILE_SIZE, 0x8b4513);
             this.groundGroup.add(ground);
+        }
+    }
+
+    private buildJungleBackground(worldWidth: number): void {
+        const h = WORLD_HEIGHT;
+        const groundY = GROUND_Y;
+        const g = this.add.graphics().setDepth(-100);
+
+        for (let y = 0; y < h; y++) {
+            const t = y / h;
+            const r = Math.floor(26 * (1 - t * 0.6));
+            const gr = Math.floor(61 + t * 40);
+            const b = Math.floor(43 + t * 50);
+            g.fillStyle(Phaser.Display.Color.GetColor(r, gr, b), 1);
+            g.fillRect(0, y, worldWidth + 100, 1);
+        }
+
+        const seed = 12345;
+        const rand = (n: number) => ((Math.sin(seed * n) * 0.5 + 0.5) * 1000) % 1;
+
+        for (let i = 0; i < Math.ceil(worldWidth / 120); i++) {
+            const x = 80 + i * 140 + rand(i * 7) * 80;
+            const trunkW = 12 + rand(i * 3) * 8;
+            const trunkH = 60 + rand(i * 5) * 40;
+            const trunkY = groundY - trunkH;
+            g.fillStyle(0x4a3728, 1);
+            g.fillRoundedRect(x - trunkW / 2, trunkY, trunkW, trunkH, 2);
+            g.fillStyle(0x2d5016, 0.95);
+            g.fillCircle(x, trunkY - 25, 45 + rand(i * 11) * 25);
+            g.fillStyle(0x3d6b1a, 0.9);
+            g.fillCircle(x - 25, trunkY - 15, 28);
+            g.fillCircle(x + 22, trunkY - 30, 30);
+            g.fillStyle(0x1e3d0e, 0.85);
+            g.fillCircle(x + 15, trunkY - 5, 18);
+            if (rand(i * 13) > 0.5) {
+                g.lineStyle(4, 0x3d3520, 0.9);
+                g.beginPath();
+                g.moveTo(x + trunkW / 2, trunkY + 20);
+                g.lineTo(x + 50 + rand(i) * 30, trunkY - 10);
+                g.strokePath();
+            }
+        }
+
+        for (let i = 0; i < Math.ceil(worldWidth / 60); i++) {
+            const x = 20 + i * 65 + rand(i * 17) * 40;
+            g.lineStyle(3, 0x2d5016, 0.7);
+            g.beginPath();
+            g.moveTo(x, 0);
+            g.lineTo(x + 8, groundY + 5);
+            g.strokePath();
+        }
+
+        for (let i = 0; i < Math.ceil(worldWidth / 25); i++) {
+            const x = i * 28 + rand(i * 19) * 15;
+            const bladeH = 14 + rand(i * 23) * 10;
+            g.fillStyle(0x2d5a1a, 0.9);
+            g.fillRect(x, groundY + 2, 3, bladeH);
+            g.fillStyle(0x3d7a22, 0.85);
+            g.fillRect(x + 4, groundY + 4, 2, bladeH - 4);
+        }
+
+        for (let i = 0; i < Math.ceil(worldWidth / 180); i++) {
+            const x = 100 + i * 200 + rand(i * 31) * 120;
+            const rx = 15 + rand(i * 7) * 12;
+            const ry = 8 + rand(i * 11) * 6;
+            g.fillStyle(0x5a5a5a, 0.9);
+            g.fillEllipse(x, groundY - ry, rx * 2, ry * 2);
+            g.fillStyle(0x4a4a4a, 0.8);
+            g.fillEllipse(x - 3, groundY - ry - 2, rx, ry);
+        }
+
+        for (let i = 0; i < Math.ceil(worldWidth / 80); i++) {
+            const x = 60 + i * 90 + rand(i * 41) * 50;
+            const y = 40 + rand(i * 43) * 120;
+            g.fillStyle(0x2d5016, 0.6);
+            g.fillCircle(x, y, 6 + rand(i) * 4);
+        }
+
+        for (let i = 0; i < Math.ceil(worldWidth / 400); i++) {
+            const tx = 200 + i * 420 + rand(i * 53) * 150;
+            const ty = 60 + rand(i * 59) * 80;
+            g.fillStyle(0x6b4423, 0.95);
+            g.fillCircle(tx, ty, 12);
+            g.fillStyle(0x5a3a1a, 0.9);
+            g.fillCircle(tx + 6, ty - 4, 6);
+            g.lineStyle(3, 0x6b4423, 0.9);
+            g.beginPath();
+            g.arc(tx + 14, ty - 8, 15, -0.8, 0.4);
+            g.strokePath();
+        }
+
+        for (let i = 0; i < Math.ceil(worldWidth / 350); i++) {
+            const sx = 150 + i * 380 + rand(i * 67) * 100;
+            const sy = groundY - 8 - rand(i * 71) * 6;
+            g.lineStyle(4, 0x4a5a2a, 0.9);
+            g.beginPath();
+            g.moveTo(sx, sy);
+            for (let j = 1; j <= 6; j++) {
+                g.lineTo(sx + j * 18 + rand(i * 73 + j) * 10, sy + (j % 2 === 0 ? 6 : -4));
+            }
+            g.strokePath();
+        }
+    }
+
+    private buildTexturedGround(worldWidth: number): void {
+        const groundY = GROUND_Y;
+        const bandTop = groundY - 4;
+        const bandH = WORLD_HEIGHT - bandTop + 4;
+        const g = this.add.graphics().setDepth(5);
+
+        const seed = 54321;
+        const rand = (n: number) => ((Math.sin(seed * n) * 0.5 + 0.5) * 1000) % 1;
+
+        for (let x = 0; x < worldWidth; x += 8) {
+            const t = rand(x * 0.7);
+            const brown = Phaser.Display.Color.GetColor(
+                120 + Math.floor(t * 40),
+                70 + Math.floor(t * 30),
+                40 + Math.floor(t * 25)
+            );
+            g.fillStyle(brown, 0.98);
+            g.fillRect(x, bandTop, 10, bandH);
+        }
+
+        for (let i = 0; i < Math.ceil(worldWidth / 24); i++) {
+            const x = i * 26 + rand(i * 47) * 18;
+            const w = 2 + rand(i * 13) * 2;
+            const len = 6 + rand(i * 19) * 10;
+            g.fillStyle(0x2a1a0a, 0.85);
+            g.fillRect(x, groundY + 2, w, len);
+            if (rand(i * 23) > 0.6) {
+                g.fillStyle(0x1a0d05, 0.9);
+                g.fillRect(x + 1, groundY + 4, 1, len - 2);
+            }
+        }
+
+        for (let i = 0; i < Math.ceil(worldWidth / 45); i++) {
+            const cx = 15 + i * 48 + rand(i * 31) * 30;
+            const cy = groundY + 6 + rand(i * 37) * 6;
+            const rw = 4 + rand(i * 41) * 4;
+            const rh = 3 + rand(i * 43) * 2;
+            g.fillStyle(0x6a6a6a, 0.9);
+            g.fillEllipse(cx, cy, rw * 2, rh * 2);
+            g.fillStyle(0x5a5a5a, 0.7);
+            g.fillEllipse(cx - 1, cy - 1, rw, rh);
+        }
+
+        for (let i = 0; i < Math.ceil(worldWidth / 90); i++) {
+            const sx = 30 + i * 95 + rand(i * 61) * 50;
+            const sy = groundY + rand(i * 67) * 10;
+            g.lineStyle(1, 0x1a0d05, 0.9);
+            g.beginPath();
+            g.moveTo(sx, sy);
+            let px = sx;
+            let py = sy;
+            for (let k = 0; k < 4 + Math.floor(rand(i * 71) * 4); k++) {
+                px += 3 + rand(i * 73 + k) * 8;
+                py += (rand(i * 79 + k) > 0.5 ? 1 : -1) * (2 + rand(i * 83 + k) * 3);
+                g.lineTo(px, py);
+            }
+            g.strokePath();
+        }
+
+        for (let i = 0; i < Math.ceil(worldWidth / 70); i++) {
+            const bx = 50 + i * 75 + rand(i * 89) * 45;
+            const by = groundY - 1 - rand(i * 97) * 3;
+            g.fillStyle(0xc98b6a, 0.95);
+            g.fillEllipse(bx, by, 6, 4);
+            g.fillStyle(0xb87a5a, 0.9);
+            g.fillEllipse(bx - 2, by, 4, 3);
+        }
+
+        for (let i = 0; i < Math.ceil(worldWidth / 55); i++) {
+            const rx = 80 + i * 60 + rand(i * 101) * 35;
+            const startY = groundY + 2 + rand(i * 103) * 10;
+            g.lineStyle(2, 0x3d2817, 0.85);
+            g.beginPath();
+            g.moveTo(rx, startY);
+            let ry = startY;
+            for (let k = 0; k < 5; k++) {
+                ry -= 3 + rand(i * 107 + k) * 4;
+                g.lineTo(rx + (k % 2 === 0 ? 4 : -2), ry);
+            }
+            g.strokePath();
         }
     }
 
