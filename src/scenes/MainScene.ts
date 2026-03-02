@@ -33,6 +33,7 @@ export default class MainScene extends Phaser.Scene {
     private isUnderwater = false;
     private levelTimeRemaining = DEFAULT_LEVEL_TIME;
     private score = 0;
+    private coins = 0;
     private victoryActive = false;
     private bowser: Bowser | null = null;
     private bridgeBodies: Phaser.Physics.Arcade.StaticBody[] = [];
@@ -92,6 +93,10 @@ export default class MainScene extends Phaser.Scene {
         this.victoryActive = false;
         this.bridgeAxeTriggered = false;
 
+        this.registry.set('score', this.score);
+        this.registry.set('coins', this.coins);
+        this.registry.set('time', this.levelTimeRemaining);
+
         const isCastle = levelConfig.type === 'castle';
         if (isCastle && currentLevel === '1-4') {
             this.buildBridgeAxeAndBowser();
@@ -149,6 +154,9 @@ export default class MainScene extends Phaser.Scene {
 
         AudioManager.init(this);
         AudioManager.playMusic('overworld');
+
+        this.scene.launch('HudScene');
+        this.scene.launch('MobileOverlayScene');
     }
 
     private buildMethMethMethodLevel(_levelData: Record<string, unknown>): void {
@@ -399,7 +407,29 @@ export default class MainScene extends Phaser.Scene {
             }
         }
 
-        this.mario.update(this.cursors, this.bButton, this.isUnderwater);
+        this.registry.set('score', this.score);
+        this.registry.set('coins', this.coins);
+        this.registry.set('time', this.levelTimeRemaining);
+
+        const inputLeft = this.registry.get('inputLeft') as boolean | undefined;
+        const inputRight = this.registry.get('inputRight') as boolean | undefined;
+        const inputJump = this.registry.get('inputJump') as boolean | undefined;
+        const inputRun = this.registry.get('inputRun') as boolean | undefined;
+        const useMobileInput = inputLeft || inputRight || inputJump || inputRun;
+
+        const cursors = useMobileInput
+            ? ({
+                left: { isDown: !!inputLeft },
+                right: { isDown: !!inputRight },
+                up: { isDown: !!inputJump },
+                down: { isDown: false },
+                space: { isDown: false },
+                shift: { isDown: !!inputRun },
+            } as Phaser.Types.Input.Keyboard.CursorKeys)
+            : this.cursors;
+        const runKey = useMobileInput ? { isDown: !!inputRun } : this.bButton;
+
+        this.mario.update(cursors, runKey as Phaser.Input.Keyboard.Key, this.isUnderwater);
         const cam = this.cameras.main;
         const marioOffset = 200;
         const worldWidth = (this.physics.world.bounds as Phaser.Geom.Rectangle).width;
