@@ -37,9 +37,14 @@ function initWindowKeys(): void {
             case 'ShiftRight': keyState.shift = false; break;
         }
     };
+    const opts = { capture: true };
+    document.addEventListener('keydown', keydown, opts);
+    document.addEventListener('keyup', keyup, opts);
     window.addEventListener('keydown', keydown);
     window.addEventListener('keyup', keyup);
     windowKeyCleanup = () => {
+        document.removeEventListener('keydown', keydown, opts);
+        document.removeEventListener('keyup', keyup, opts);
         window.removeEventListener('keydown', keydown);
         window.removeEventListener('keyup', keyup);
         windowKeyCleanup = null;
@@ -192,13 +197,12 @@ export default class MainScene extends Phaser.Scene {
         keyState.shift = false;
         initWindowKeys();
 
-        const canvas = this.sys.game.canvas;
+        const canvas = this.sys.game.canvas as HTMLCanvasElement;
         canvas.setAttribute('tabindex', '1');
-        (canvas as HTMLCanvasElement).focus?.();
-        this.time.delayedCall(100, () => (canvas as HTMLCanvasElement).focus?.());
-        this.input.on('pointerdown', () => {
-            (canvas as HTMLCanvasElement).focus?.();
-        });
+        canvas.focus();
+        this.time.delayedCall(100, () => canvas.focus());
+        this.time.delayedCall(500, () => canvas.focus());
+        this.input.on('pointerdown', () => canvas.focus());
 
         this.cursors = this.input.keyboard!.createCursorKeys();
         this.runKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);

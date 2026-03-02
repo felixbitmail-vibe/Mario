@@ -67,6 +67,10 @@ export default class MobileOverlayScene extends Phaser.Scene {
 
         if (!this.sys.game.device.input.touch) {
             this.scene.setVisible(false);
+            this.leftBtn.disableInteractive();
+            this.rightBtn.disableInteractive();
+            this.aBtn.disableInteractive();
+            this.bBtn.disableInteractive();
         }
     }
 }
