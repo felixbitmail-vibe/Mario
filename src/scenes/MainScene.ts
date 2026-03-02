@@ -11,7 +11,7 @@ const DEFAULT_LEVEL_TIME = 300;
 const FLAG_POLE_X_1_1 = 3168;
 const POINTS_PER_TIME_TICK = 50;
 
-const keyState = { left: false, right: false, up: false, down: false, shift: false, space: false, w: false };
+const keyState = { left: false, right: false, up: false, down: false, shift: false, space: false, w: false, a: false, d: false };
 
 let keyInputEl: HTMLInputElement | null = null;
 let documentKeysAttached = false;
@@ -23,7 +23,9 @@ function onKeyDown(e: KeyboardEvent): void {
     };
     switch (e.code) {
         case 'ArrowLeft': keyState.left = true; prevent(); break;
+        case 'KeyA': keyState.a = true; prevent(); break;
         case 'ArrowRight': keyState.right = true; prevent(); break;
+        case 'KeyD': keyState.d = true; prevent(); break;
         case 'ArrowUp': keyState.up = true; prevent(); break;
         case 'ArrowDown': keyState.down = true; prevent(); break;
         case 'Space': keyState.space = true; prevent(); break;
@@ -36,7 +38,9 @@ function onKeyDown(e: KeyboardEvent): void {
 function onKeyUp(e: KeyboardEvent): void {
     switch (e.code) {
         case 'ArrowLeft': keyState.left = false; break;
+        case 'KeyA': keyState.a = false; break;
         case 'ArrowRight': keyState.right = false; break;
+        case 'KeyD': keyState.d = false; break;
         case 'ArrowUp': keyState.up = false; break;
         case 'ArrowDown': keyState.down = false; break;
         case 'Space': keyState.space = false; break;
@@ -229,12 +233,31 @@ export default class MainScene extends Phaser.Scene {
         keyState.shift = false;
         keyState.space = false;
         keyState.w = false;
+        keyState.a = false;
+        keyState.d = false;
 
         attachDocumentKeys();
         focusKeyInput();
-        this.time.delayedCall(150, () => focusKeyInput());
-        this.time.delayedCall(600, () => focusKeyInput());
+
+        const canvas = this.sys.game.canvas as HTMLCanvasElement;
+        canvas.setAttribute('tabindex', '0');
+        canvas.addEventListener('keydown', onKeyDown);
+        canvas.addEventListener('keyup', onKeyUp);
+        this.events.once('shutdown', () => {
+            canvas.removeEventListener('keydown', onKeyDown);
+            canvas.removeEventListener('keyup', onKeyUp);
+        });
+
+        this.time.delayedCall(150, () => {
+            focusKeyInput();
+            canvas.focus();
+        });
+        this.time.delayedCall(600, () => {
+            focusKeyInput();
+            canvas.focus();
+        });
         this.input.on('pointerdown', () => {
+            canvas.focus();
             focusKeyInput();
             this.removeKeyHintOnce();
         });
@@ -242,7 +265,7 @@ export default class MainScene extends Phaser.Scene {
         const w = this.cameras.main.width;
         const h = this.cameras.main.height;
         const bg = this.add.rectangle(w / 2, h / 2, w + 100, h + 100, 0x000000, 0.4).setScrollFactor(0).setDepth(5000).setInteractive();
-        const txt = this.add.text(w / 2, h / 2, 'Klik her eller tryk en tast\n← → bevæg   ↑ Space W hop   SHIFT løb', {
+        const txt = this.add.text(w / 2, h / 2, 'Klik her eller tryk en tast\n← → A D bevæg   ↑ Space W hop   SHIFT løb', {
             fontSize: '14px',
             color: '#fff',
             align: 'center',
@@ -588,13 +611,13 @@ export default class MainScene extends Phaser.Scene {
         const mobileRun = !!inputRun;
 
         const jumpDown = keyState.up || keyState.space || keyState.w;
-        if (this.keyHintOverlay && (keyState.left || keyState.right || jumpDown || keyState.down || keyState.shift)) {
+        if (this.keyHintOverlay && (keyState.left || keyState.right || keyState.a || keyState.d || jumpDown || keyState.down || keyState.shift)) {
             this.removeKeyHintOnce();
         }
 
         const cursors = {
-            left: { isDown: mobileLeft || keyState.left || this.cursors.left.isDown },
-            right: { isDown: mobileRight || keyState.right || this.cursors.right.isDown },
+            left: { isDown: mobileLeft || keyState.left || keyState.a || this.cursors.left.isDown },
+            right: { isDown: mobileRight || keyState.right || keyState.d || this.cursors.right.isDown },
             up: { isDown: mobileJump || jumpDown || this.cursors.up.isDown },
             down: { isDown: keyState.down || this.cursors.down.isDown },
             space: { isDown: false },
