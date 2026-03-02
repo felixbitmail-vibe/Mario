@@ -26,6 +26,7 @@ export default class MainScene extends Phaser.Scene {
     private pipeZones: PipeZone[] = [];
     private enteringPipe = false;
     private subLevel: number | undefined;
+    private isUnderwater = false;
 
     constructor() {
         super({ key: 'MainScene' });
@@ -52,6 +53,7 @@ export default class MainScene extends Phaser.Scene {
         this.subLevel = data?.subLevel;
 
         const levelConfig = levelManager.getConfig();
+        this.isUnderwater = levelConfig.type === 'underwater';
         this.cameras.main.setBackgroundColor(levelConfig.bgColor || '#5C94FC');
 
         const levelData = this.cache.json.get(currentLevel) as Record<string, unknown> | undefined;
@@ -64,7 +66,7 @@ export default class MainScene extends Phaser.Scene {
         }
 
         const spawnX = this.subLevel !== undefined ? 120 : 100;
-        this.mario = new Mario(this, spawnX, GROUND_Y - 8);
+        this.mario = new Mario(this, spawnX, GROUND_Y - 8, this.isUnderwater);
         this.mario.setDepth(10);
 
         if (!this.anims.exists('idle')) {
@@ -78,6 +80,12 @@ export default class MainScene extends Phaser.Scene {
                 key: 'walk',
                 frames: this.anims.generateFrameNumbers('mario', { start: 0, end: 3 }),
                 frameRate: 10,
+                repeat: -1,
+            });
+            this.anims.create({
+                key: 'swim',
+                frames: this.anims.generateFrameNumbers('mario', { start: 2, end: 5 }),
+                frameRate: 12,
                 repeat: -1,
             });
         }
@@ -221,7 +229,7 @@ export default class MainScene extends Phaser.Scene {
             }
         }
 
-        this.mario.update(this.cursors, this.bButton);
+        this.mario.update(this.cursors, this.bButton, this.isUnderwater);
         const cam = this.cameras.main;
         const marioOffset = 200;
         const worldWidth = (this.physics.world.bounds as Phaser.Geom.Rectangle).width;
