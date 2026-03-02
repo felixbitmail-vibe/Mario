@@ -11,18 +11,25 @@ const DEFAULT_LEVEL_TIME = 300;
 const FLAG_POLE_X_1_1 = 3168;
 const POINTS_PER_TIME_TICK = 50;
 
-const keyState = { left: false, right: false, up: false, down: false, shift: false };
+const keyState = { left: false, right: false, up: false, down: false, shift: false, space: false, w: false };
 
 let keyInputEl: HTMLInputElement | null = null;
+let documentKeysAttached = false;
 
 function onKeyDown(e: KeyboardEvent): void {
+    const prevent = () => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
     switch (e.code) {
-        case 'ArrowLeft': keyState.left = true; e.preventDefault(); break;
-        case 'ArrowRight': keyState.right = true; e.preventDefault(); break;
-        case 'ArrowUp': keyState.up = true; e.preventDefault(); break;
-        case 'ArrowDown': keyState.down = true; e.preventDefault(); break;
+        case 'ArrowLeft': keyState.left = true; prevent(); break;
+        case 'ArrowRight': keyState.right = true; prevent(); break;
+        case 'ArrowUp': keyState.up = true; prevent(); break;
+        case 'ArrowDown': keyState.down = true; prevent(); break;
+        case 'Space': keyState.space = true; prevent(); break;
+        case 'KeyW': keyState.w = true; prevent(); break;
         case 'ShiftLeft':
-        case 'ShiftRight': keyState.shift = true; e.preventDefault(); break;
+        case 'ShiftRight': keyState.shift = true; prevent(); break;
     }
 }
 
@@ -32,12 +39,24 @@ function onKeyUp(e: KeyboardEvent): void {
         case 'ArrowRight': keyState.right = false; break;
         case 'ArrowUp': keyState.up = false; break;
         case 'ArrowDown': keyState.down = false; break;
+        case 'Space': keyState.space = false; break;
+        case 'KeyW': keyState.w = false; break;
         case 'ShiftLeft':
         case 'ShiftRight': keyState.shift = false; break;
     }
 }
 
+function attachDocumentKeys(): void {
+    if (documentKeysAttached) return;
+    documentKeysAttached = true;
+    document.addEventListener('keydown', onKeyDown, true);
+    document.addEventListener('keyup', onKeyUp, true);
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+}
+
 function ensureKeyInput(): HTMLInputElement {
+    attachDocumentKeys();
     if (keyInputEl) return keyInputEl;
     const el = document.createElement('input');
     el.type = 'text';
@@ -54,7 +73,9 @@ function ensureKeyInput(): HTMLInputElement {
 
 function focusKeyInput(): void {
     const el = ensureKeyInput();
-    el.focus();
+    try {
+        el.focus();
+    } catch (_) {}
 }
 
 interface PipeZone {
@@ -197,12 +218,19 @@ export default class MainScene extends Phaser.Scene {
         this.cameras.main.setBounds(0, 0, worldWidth, WORLD_HEIGHT);
         this.cameras.main.setScroll(0, 0);
 
+        if (levelConfig.type === 'overworld' || levelConfig.type === 'sky') {
+            this.buildForestBackground(worldWidth);
+        }
+
         keyState.left = false;
         keyState.right = false;
         keyState.up = false;
         keyState.down = false;
         keyState.shift = false;
+        keyState.space = false;
+        keyState.w = false;
 
+        attachDocumentKeys();
         focusKeyInput();
         this.time.delayedCall(150, () => focusKeyInput());
         this.time.delayedCall(600, () => focusKeyInput());
@@ -214,7 +242,7 @@ export default class MainScene extends Phaser.Scene {
         const w = this.cameras.main.width;
         const h = this.cameras.main.height;
         const bg = this.add.rectangle(w / 2, h / 2, w + 100, h + 100, 0x000000, 0.4).setScrollFactor(0).setDepth(5000).setInteractive();
-        const txt = this.add.text(w / 2, h / 2, 'Klik her for at aktivere tastatur\n← → bevæg   ↑ hop   SHIFT løb', {
+        const txt = this.add.text(w / 2, h / 2, 'Klik her eller tryk en tast\n← → bevæg   ↑ Space W hop   SHIFT løb', {
             fontSize: '14px',
             color: '#fff',
             align: 'center',
@@ -352,6 +380,61 @@ export default class MainScene extends Phaser.Scene {
         for (let x = 0; x < worldWidth; x += TILE_SIZE) {
             const ground = this.add.rectangle(x + TILE_SIZE / 2, groundY + TILE_SIZE / 2, TILE_SIZE, TILE_SIZE, 0x8b4513);
             this.groundGroup.add(ground);
+        }
+    }
+
+    private buildForestBackground(worldWidth: number): void {
+        const h = WORLD_HEIGHT;
+        const groundY = GROUND_Y;
+        const g = this.add.graphics().setDepth(-100);
+
+        const skyTop = 0x87CEEB;
+        const skyMid = 0xB0D4E8;
+        const skyHorizon = 0xC8E0CC;
+        const skyGround = 0x9BB89A;
+        g.fillGradientStyle(skyTop, skyMid, skyHorizon, skyGround, 1);
+        g.fillRect(0, 0, worldWidth + 200, h + 50);
+
+        const seed = 7931;
+        const rand = (n: number) => ((Math.sin(seed * n) * 0.5 + 0.5) * 10000) % 1;
+
+        const drawTree = (cx: number, baseY: number, scale: number, dark: boolean) => {
+            const trunkH = 28 * scale + rand(cx * 7) * 20 * scale;
+            const trunkW = 4 * scale + rand(cx * 11) * 2 * scale;
+            const trunkY = baseY - trunkH;
+            const t = dark ? 0.5 : 0.75;
+            g.fillStyle(0x3d2817, t);
+            g.fillRoundedRect(cx - trunkW / 2, trunkY, trunkW, trunkH, 2);
+            g.fillStyle(0x4a3520, t * 0.9);
+            g.fillRoundedRect(cx - trunkW / 2 + 1, trunkY + 1, trunkW - 2, trunkH - 2, 1);
+
+            const foliageY = trunkY - 2;
+            const r1 = 18 * scale + rand(cx * 13) * 8 * scale;
+            const r2 = 14 * scale + rand(cx * 17) * 6 * scale;
+            const r3 = 12 * scale + rand(cx * 19) * 4 * scale;
+            const green = dark ? 0x1e4620 : 0x2d5a2e;
+            const green2 = dark ? 0x2a5530 : 0x3d6b3a;
+            const green3 = dark ? 0x243d26 : 0x355635;
+            g.fillStyle(green, 0.92);
+            g.fillCircle(cx, foliageY - 4, r1);
+            g.fillStyle(green2, 0.88);
+            g.fillCircle(cx - r1 * 0.4, foliageY + 2, r2);
+            g.fillCircle(cx + r1 * 0.35, foliageY - 2, r2);
+            g.fillStyle(green3, 0.85);
+            g.fillCircle(cx + r2 * 0.3, foliageY + 4, r3);
+        };
+
+        for (let i = 0; i < Math.ceil(worldWidth / 90) + 4; i++) {
+            const x = -40 + i * 95 + rand(i * 23) * 50;
+            drawTree(x, groundY + 4, 0.55, true);
+        }
+        for (let i = 0; i < Math.ceil(worldWidth / 65) + 6; i++) {
+            const x = -20 + i * 68 + rand(i * 31) * 45;
+            drawTree(x, groundY + 2, 0.85, false);
+        }
+        for (let i = 0; i < Math.ceil(worldWidth / 48) + 8; i++) {
+            const x = i * 52 + rand(i * 41) * 38;
+            drawTree(x, groundY, 1, false);
         }
     }
 
@@ -504,10 +587,15 @@ export default class MainScene extends Phaser.Scene {
         const mobileJump = !!inputJump;
         const mobileRun = !!inputRun;
 
+        const jumpDown = keyState.up || keyState.space || keyState.w;
+        if (this.keyHintOverlay && (keyState.left || keyState.right || jumpDown || keyState.down || keyState.shift)) {
+            this.removeKeyHintOnce();
+        }
+
         const cursors = {
             left: { isDown: mobileLeft || keyState.left || this.cursors.left.isDown },
             right: { isDown: mobileRight || keyState.right || this.cursors.right.isDown },
-            up: { isDown: mobileJump || keyState.up || this.cursors.up.isDown },
+            up: { isDown: mobileJump || jumpDown || this.cursors.up.isDown },
             down: { isDown: keyState.down || this.cursors.down.isDown },
             space: { isDown: false },
             shift: { isDown: mobileRun || keyState.shift || this.runKey.isDown },
