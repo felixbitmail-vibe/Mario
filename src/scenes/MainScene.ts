@@ -1,11 +1,15 @@
 import Phaser from 'phaser';
 import Mario from '../classes/Mario';
+import Bowser from '../classes/Bowser';
 import AudioManager from '../managers/AudioManager';
 import LevelManager from '../managers/LevelManager';
 
 const WORLD_HEIGHT = 240;
 const TILE_SIZE = 16;
 const GROUND_Y = WORLD_HEIGHT - 16;
+const DEFAULT_LEVEL_TIME = 300;
+const FLAG_POLE_X_1_1 = 3168;
+const POINTS_PER_TIME_TICK = 50;
 
 interface PipeZone {
     x: number;
@@ -27,6 +31,14 @@ export default class MainScene extends Phaser.Scene {
     private enteringPipe = false;
     private subLevel: number | undefined;
     private isUnderwater = false;
+    private levelTimeRemaining = DEFAULT_LEVEL_TIME;
+    private score = 0;
+    private victoryActive = false;
+    private bowser: Bowser | null = null;
+    private bridgeBodies: Phaser.Physics.Arcade.StaticBody[] = [];
+    private bridgeAxeTriggered = false;
+    private axeZone: Phaser.GameObjects.Rectangle | null = null;
+    private flagPoleZone: Phaser.GameObjects.Rectangle | null = null;
 
     constructor() {
         super({ key: 'MainScene' });
@@ -44,6 +56,8 @@ export default class MainScene extends Phaser.Scene {
         this.load.image('tiles', '/assets/sprites/tiles.png');
         this.load.audio('overworld', '/assets/audio/overworld.mp3');
         this.load.audio('jump', '/assets/audio/jump.wav');
+        this.load.audio('level_complete', '/assets/audio/level_complete.mp3');
+        this.load.audio('tick', '/assets/audio/tick.wav');
     }
 
     create(data?: { currentLevel?: string; subLevel?: number }): void {
@@ -63,6 +77,28 @@ export default class MainScene extends Phaser.Scene {
             this.buildMethMethMethodLevel(levelData);
         } else {
             this.buildFuloxLevel(levelData, this.subLevel);
+        }
+
+        if (!this.textures.exists('bowser')) {
+            const g = this.add.graphics();
+            g.fillStyle(0x8b0000, 1);
+            g.fillRect(0, 0, 32, 32);
+            g.generateTexture('bowser', 32, 32);
+            g.destroy();
+        }
+
+        const levelDataWithTime = levelData as { time?: number };
+        this.levelTimeRemaining = typeof levelDataWithTime?.time === 'number' ? levelDataWithTime.time : DEFAULT_LEVEL_TIME;
+        this.victoryActive = false;
+        this.bridgeAxeTriggered = false;
+
+        const isCastle = levelConfig.type === 'castle';
+        if (isCastle && currentLevel === '1-4') {
+            this.buildBridgeAxeAndBowser();
+        }
+
+        if (!isCastle && this.subLevel === undefined) {
+            this.setupFlagPole(currentLevel);
         }
 
         const spawnX = this.subLevel !== undefined ? 120 : 100;
@@ -92,6 +128,17 @@ export default class MainScene extends Phaser.Scene {
 
         this.physics.add.collider(this.mario, this.groundGroup);
         this.physics.add.collider(this.mario, this.blocksGroup);
+
+        if (this.bowser) {
+            this.physics.add.collider(this.mario, this.bowser.getFireGroup(), this.marioHitByFire, undefined, this);
+            this.physics.add.collider(this.mario, this.bowser.getHammerGroup(), this.marioHitByHammer, undefined, this);
+        }
+        if (this.axeZone) {
+            this.physics.add.overlap(this.mario, this.axeZone, () => this.onAxeTouched(), undefined, this);
+        }
+        if (this.flagPoleZone) {
+            this.physics.add.overlap(this.mario, this.flagPoleZone, () => this.startFlagVictory(), undefined, this);
+        }
 
         const worldWidth = (this.physics.world.bounds as Phaser.Geom.Rectangle).width;
         this.cameras.main.setBounds(0, 0, worldWidth, WORLD_HEIGHT);
@@ -217,7 +264,130 @@ export default class MainScene extends Phaser.Scene {
         }
     }
 
-    update(): void {
+    private buildBridgeAxeAndBowser(): void {
+        const BRIDGE_X = 1080;
+        const BRIDGE_W = 48;
+        const BRIDGE_Y = GROUND_Y - 24;
+        const AXE_X = 1118;
+        const AXE_W = 20;
+        const AXE_Y = GROUND_Y - 48;
+        const LAVA_Y = GROUND_Y + 8;
+        const BOWSER_X = 1092;
+
+        for (let i = 0; i < BRIDGE_W; i += TILE_SIZE) {
+            const seg = this.add.rectangle(BRIDGE_X + i + TILE_SIZE / 2, BRIDGE_Y + TILE_SIZE / 2, TILE_SIZE, TILE_SIZE, 0x4a4a4a);
+            this.groundGroup.add(seg);
+            const body = seg.body as Phaser.Physics.Arcade.StaticBody;
+            if (body) this.bridgeBodies.push(body);
+        }
+
+        this.axeZone = this.add.rectangle(AXE_X + AXE_W / 2, AXE_Y + 16, AXE_W, 40, 0xffd700).setVisible(false);
+        this.physics.add.existing(this.axeZone, true);
+        (this.axeZone.body as Phaser.Physics.Arcade.StaticBody).setSize(AXE_W, 40);
+
+        this.add.rectangle(BRIDGE_X + BRIDGE_W / 2, LAVA_Y, BRIDGE_W + 40, 32, 0xff4400).setAlpha(0.9);
+
+        this.bowser = new Bowser(this, BOWSER_X, BRIDGE_Y);
+        this.bowser.setDepth(10);
+        this.physics.add.collider(this.bowser, this.groundGroup);
+    }
+
+    private onAxeTouched(): void {
+        if (this.bridgeAxeTriggered) return;
+        this.bridgeAxeTriggered = true;
+
+        for (const body of this.bridgeBodies) {
+            const go = body.gameObject as Phaser.GameObjects.GameObject | undefined;
+            if (go) {
+                this.physics.world.remove(body);
+                go.destroy();
+            }
+        }
+        this.bridgeBodies = [];
+
+        if (this.bowser && !this.bowser.isDead) this.bowser.fallInLava();
+    }
+
+    private marioHitByFire(): void {
+        this.scene.restart();
+    }
+
+    private marioHitByHammer(): void {
+        this.scene.restart();
+    }
+
+    private setupFlagPole(currentLevel: string): void {
+        const flagX = currentLevel === '1-1' ? FLAG_POLE_X_1_1 : (this.physics.world.bounds as Phaser.Geom.Rectangle).width - 80;
+        this.flagPoleZone = this.add.rectangle(flagX, WORLD_HEIGHT / 2, 24, WORLD_HEIGHT, 0).setVisible(false);
+        this.physics.add.existing(this.flagPoleZone, true);
+        (this.flagPoleZone.body as Phaser.Physics.Arcade.StaticBody).setSize(24, WORLD_HEIGHT);
+    }
+
+    private startFlagVictory(): void {
+        if (this.victoryActive) return;
+        this.victoryActive = true;
+
+        const body = this.mario.body as Phaser.Physics.Arcade.Body | null;
+        if (body) {
+            body.setVelocity(0, 0);
+            body.setAllowGravity(false);
+        }
+
+        const flagX = this.flagPoleZone ? this.flagPoleZone.x : this.mario.x;
+        const slideDuration = 600;
+
+        this.tweens.add({
+            targets: this.mario,
+            x: flagX - 8,
+            y: GROUND_Y - 8,
+            duration: slideDuration,
+            ease: 'Linear',
+            onComplete: () => {
+                if (this.cache.audio.exists('level_complete')) AudioManager.playMusicOnce('level_complete');
+                const castleX = flagX + 120;
+                this.tweens.add({
+                    targets: this.mario,
+                    x: castleX,
+                    duration: 1500,
+                    ease: 'Linear',
+                    onComplete: () => {
+                        this.startTimeCountdown();
+                    },
+                });
+            },
+        });
+    }
+
+    private startTimeCountdown(): void {
+        const tickInterval = 1000;
+        const addPoints = () => {
+            if (this.levelTimeRemaining <= 0) {
+                const next = LevelManager.getInstance().getConfig().next;
+                if (next) {
+                    LevelManager.getInstance().currentLevel = next;
+                    this.scene.start('MainScene', { currentLevel: next });
+                } else {
+                    this.scene.start('MainScene');
+                }
+                return;
+            }
+            this.levelTimeRemaining--;
+            this.score += POINTS_PER_TIME_TICK;
+            if (this.cache.audio.exists('tick')) AudioManager.playSFX('tick');
+        };
+
+        this.time.addEvent({
+            delay: tickInterval,
+            callback: addPoints,
+            loop: true,
+        });
+        addPoints();
+    }
+
+    update(_time: number, delta: number): void {
+        if (this.bowser && !this.bowser.isDead) this.bowser.update(_time, delta);
+
+        if (this.victoryActive) return;
         if (this.enteringPipe) return;
 
         const body = this.mario.body as Phaser.Physics.Arcade.Body | null;
@@ -261,12 +431,12 @@ export default class MainScene extends Phaser.Scene {
             duration: 800,
             ease: 'Linear',
             onComplete: () => {
-                const currentLevel = LevelManager.getInstance().currentLevel;
+                const levelKey = LevelManager.getInstance().currentLevel;
                 if (zone.targetType === 'warp') {
                     LevelManager.getInstance().currentLevel = zone.target as string;
                     this.scene.start('MainScene', { currentLevel: zone.target });
                 } else {
-                    this.scene.start('MainScene', { currentLevel, subLevel: zone.target as number });
+                    this.scene.start('MainScene', { currentLevel: levelKey, subLevel: zone.target as number });
                 }
             },
         });
