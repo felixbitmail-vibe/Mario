@@ -149,6 +149,11 @@ export default class MainScene extends Phaser.Scene {
         this.cameras.main.setBounds(0, 0, worldWidth, WORLD_HEIGHT);
         this.cameras.main.setScroll(0, 0);
 
+        const canvas = this.sys.game.canvas;
+        canvas.setAttribute('tabindex', '1');
+        canvas.focus();
+        this.input.on('pointerdown', () => canvas.focus());
+
         this.cursors = this.input.keyboard!.createCursorKeys();
         this.bButton = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
 
